@@ -1,7 +1,7 @@
 import csv
 import threading
 from time import *
-from multiprocessing import Process, Pool
+from multiprocessing import Process, Queue
 import numpy as np
 
 
@@ -10,45 +10,38 @@ def print_matrix(matrix):
         print(*i, end='\n')
 
 
-class Multiplication:
+def element(index , matrix1, matrix2,q):
+    i, j = index
+    res = 0
+    for k in range(len(matrix2)):
+        res += matrix1[i][k] * matrix2[k][j]
+    return q.put(res)
 
-    def __init__(self, size1=None, size2=None):
-        self.matrix1 = self.read_csvmatrix('matrix1.csv')
-        self.matrix2 = self.read_csvmatrix('matrix2.csv')
-        self.final = np.zeros((len(self.matrix1), len(self.matrix2[0])))
-        self.multi()
 
-    def read_csvmatrix(self, name_file):
-        matrix = []
-        with open(name_file, 'r', encoding='utf-8') as file:
-            reader = csv.reader(file, delimiter=',')
-            for i in reader:
-                i = [int(j) for j in i]
-                matrix.append(i)
+def read_csvmatrix(name_file):
+    matrix = []
+    with open(name_file, 'r', encoding='utf-8') as file:
+        reader = csv.reader(file, delimiter=',')
+        for i in reader:
+            i = [int(j) for j in i]
+            matrix.append(i)
 
-        return matrix
+    return matrix
 
-    def multi(self):
-        process = []
-        for i in range(self.final.shape[0]):
-            for j in range(self.final.shape[1]):
-                t = Process(target=self.element, args=[(i, j)])
-                t.start()
-                process.append(t)
 
-            # for t in process:
-            #     t.join()
-
-        print_matrix(self.final)
-
-    def element(self, index):
-        i, j = index
-        print(1)
-        for k in range(len(self.matrix2)):
-            self.final[i][j] += self.matrix1[i][k] * self.matrix2[k][j]
-            print(self.final)
-
+matrix1 = read_csvmatrix('/Users/kirillanpilov/Test/matrix1.csv')
+matrix2 = read_csvmatrix('/Users/kirillanpilov/Test/matrix2.csv')
+final = np.zeros((len(matrix1), len(matrix2[0])))
 
 if __name__ == '__main__':
-    task1 = Multiplication()
-    print_matrix(task1.final)
+    q = Queue()
+    process = []
+    for i in range(final.shape[0]):
+        for j in range(final.shape[1]):
+            p = Process(target=element, args=[(i, j), matrix1,matrix2 , q])
+            p.start()
+            res = q.get()
+            final[i][j] = res
+            p.join()
+    print("Ответ")
+    print(final)
